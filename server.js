@@ -8,6 +8,11 @@ const apiRoutes = require('./server/routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -17,7 +22,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: isProduction,
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000
   }
@@ -35,6 +40,7 @@ app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/services.html', (req, res) => res.sendFile(path.join(__dirname, 'services.html')));
 app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'gallery.html')));
 app.get('/testimonials.html', (req, res) => res.sendFile(path.join(__dirname, 'testimonials.html')));
