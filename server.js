@@ -27,6 +27,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
+app.get('/admin/admin.css', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'admin.css')));
+app.get('/admin/components.js', (req, res) => res.sendFile(path.join(__dirname, 'admin', 'components.js')));
 
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
