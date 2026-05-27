@@ -35,6 +35,7 @@ app.use('/admin', adminRoutes);
 app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/services.html', (req, res) => res.sendFile(path.join(__dirname, 'services.html')));
 app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'gallery.html')));
 app.get('/testimonials.html', (req, res) => res.sendFile(path.join(__dirname, 'testimonials.html')));
