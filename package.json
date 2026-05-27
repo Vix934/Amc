@@ -1,0 +1,21 @@
+{
+  "name": "amc",
+  "version": "1.0.0",
+  "description": "A modern, responsive website for **American Home Cinemas** — a company specializing in home theater installations, smart home automation, security systems, and more.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.10.0",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.1",
+    "uuid": "^14.0.0"
+  }
+}

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gallery Management | AHC Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <main class="main">
+    <div class="main__header">
+      <h1>Gallery Management</h1>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="upload-area" id="uploadArea">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p><strong>Click to upload</strong> or drag and drop</p>
+      <p style="font-size: 0.8rem; margin-top: 8px;">JPG, PNG, GIF, WEBP up to 10MB</p>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    </div>
+
+    <!-- Photos Grid -->
+    <div class="card">
+      <div class="card__title">Photos (<span id="photoCount">0</span>)</div>
+      <div class="gallery-admin-grid" id="galleryGrid"></div>
+      <p id="emptyGallery" style="color: var(--text-muted); text-align: center; padding: 40px 0; display: none;">No photos yet. Upload some above!</p>
+    </div>
+  </main>
+
+  <!-- Edit Modal -->
+  <div class="modal" id="editModal">
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2>Edit Photo</h2>
+        <button class="modal__close" onclick="closeModal('editModal')">&times;</button>
+      </div>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <label for="editCaption">Caption</label>
+          <input type="text" id="editCaption" class="form-control" placeholder="Photo caption">
+        </div>
+        <div class="form-group">
+          <label for="editCategory">Category</label>
+          <select id="editCategory" class="form-control">
+            <option value="General">General</option>
+            <option value="Home Theater">Home Theater</option>
+            <option value="Surround Sound">Surround Sound</option>
+            <option value="TV Mounting">TV Mounting</option>
+            <option value="Smart Home">Smart Home</option>
+            <option value="Surveillance">Surveillance</option>
+            <option value="Outdoor Audio">Outdoor Audio</option>
+            <option value="Smart Locks">Smart Locks</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editOrder">Sort Order</label>
+          <input type="number" id="editOrder" class="form-control" min="0">
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="editFeatured"> Featured (shown as "Most Recent Project")
+          </label>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeModal('editModal')">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/admin/components.js"></script>
+  <script>
+    document.getElementById('sidebar-container').innerHTML = getSidebarHTML('gallery');
+
+    let photos = [];
+
+    async function loadPhotos() {
+      const res = await fetch('/api/gallery');
+      photos = await res.json();
+      renderPhotos();
+    }
+
+    function renderPhotos() {
+      const grid = document.getElementById('galleryGrid');
+      const empty = document.getElementById('emptyGallery');
+      document.getElementById('photoCount').textContent = photos.length;
+
+      if (photos.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = photos.map((p, i) => `
+        <div class="gallery-admin-item" data-id="${p.id}">
+          <img src="/uploads/${p.filename}" alt="${p.caption || p.original_name}" loading="lazy">
+          <span class="gallery-admin-item__order">${i + 1}</span>
+          <div class="gallery-admin-item__actions">
+            <button class="btn btn--sm btn--outline" onclick="editPhoto(${p.id})" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn btn--sm btn--danger" onclick="deletePhoto(${p.id})" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+          ${p.caption ? `<div class="gallery-admin-item__caption">${p.caption}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // Upload
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('upload-area--dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('upload-area--dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('upload-area--dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+    async function handleFiles(files) {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('caption', '');
+        formData.append('category', 'General');
+
+        const res = await fetch('/api/gallery', { method: 'POST', body: formData });
+        if (res.ok) {
+          showToast(`Uploaded: ${file.name}`, 'success');
+        } else {
+          showToast(`Failed to upload: ${file.name}`, 'error');
+        }
+      }
+      loadPhotos();
+      fileInput.value = '';
+    }
+
+    // Edit
+    function editPhoto(id) {
+      const photo = photos.find(p => p.id === id);
+      if (!photo) return;
+      document.getElementById('editId').value = id;
+      document.getElementById('editCaption').value = photo.caption;
+      document.getElementById('editCategory').value = photo.category;
+      document.getElementById('editOrder').value = photo.sort_order;
+      document.getElementById('editFeatured').checked = !!photo.is_featured;
+      openModal('editModal');
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editId').value;
+      const res = await fetch(`/api/gallery/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caption: document.getElementById('editCaption').value,
+          category: document.getElementById('editCategory').value,
+          sort_order: parseInt(document.getElementById('editOrder').value),
+          is_featured: document.getElementById('editFeatured').checked ? 1 : 0
+        })
+      });
+      if (res.ok) {
+        showToast('Photo updated', 'success');
+        closeModal('editModal');
+        loadPhotos();
+      }
+    });
+
+    // Delete
+    async function deletePhoto(id) {
+      if (!confirm('Delete this photo?')) return;
+      const res = await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Photo deleted', 'success');
+        loadPhotos();
+      }
+    }
+
+    loadPhotos();
+  </script>
+</body>
+</html>

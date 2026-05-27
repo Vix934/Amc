@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | AHC Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <main class="main">
+    <div class="main__header">
+      <h1>Dashboard</h1>
+      <a href="/" class="btn btn--outline btn--sm" target="_blank">View Website</a>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8a45a" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div class="stat-card__value" id="photoCount">-</div>
+        <div class="stat-card__label">Gallery Photos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8a45a" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="stat-card__value" id="testimonialCount">-</div>
+        <div class="stat-card__label">Testimonials</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c8a45a" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.35"/></svg>
+        </div>
+        <div class="stat-card__value" id="contactCount">-</div>
+        <div class="stat-card__label">Contact Entries</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__title">Quick Links</div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="/admin/gallery" class="btn btn--outline btn--sm">Manage Gallery</a>
+        <a href="/admin/testimonials" class="btn btn--outline btn--sm">Manage Testimonials</a>
+        <a href="/admin/contact" class="btn btn--outline btn--sm">Manage Contact Info</a>
+        <a href="/admin/settings" class="btn btn--outline btn--sm">Site Settings</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__title">Change Password</div>
+      <form id="passwordForm" style="max-width: 400px;">
+        <div class="form-group">
+          <label for="currentPassword">Current Password</label>
+          <input type="password" id="currentPassword" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">New Password</label>
+          <input type="password" id="newPassword" class="form-control" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirm New Password</label>
+          <input type="password" id="confirmPassword" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn--primary">Update Password</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/admin/components.js"></script>
+  <script>
+    document.getElementById('sidebar-container').innerHTML = getSidebarHTML('dashboard');
+
+    async function loadStats() {
+      const [photos, testimonials, contacts] = await Promise.all([
+        fetch('/api/gallery').then(r => r.json()),
+        fetch('/api/testimonials').then(r => r.json()),
+        fetch('/api/contact').then(r => r.json())
+      ]);
+      document.getElementById('photoCount').textContent = photos.length;
+      document.getElementById('testimonialCount').textContent = testimonials.length;
+      document.getElementById('contactCount').textContent = contacts.length;
+    }
+
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPass = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmPassword').value;
+
+      if (newPass !== confirm) {
+        showToast('Passwords do not match', 'error');
+        return;
+      }
+
+      const res = await fetch('/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: document.getElementById('currentPassword').value,
+          newPassword: newPass
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Password updated successfully', 'success');
+        e.target.reset();
+      } else {
+        showToast(data.error, 'error');
+      }
+    });
+
+    loadStats();
+  </script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Settings | AHC Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <main class="main">
+    <div class="main__header">
+      <h1>Site Settings</h1>
+    </div>
+
+    <form id="settingsForm">
+      <!-- Hero Section -->
+      <div class="card">
+        <div class="card__title">Hero Section</div>
+        <div class="form-group">
+          <label for="hero_badge">Hero Badge Text</label>
+          <input type="text" id="hero_badge" class="form-control" placeholder="Trusted Home Theater Experts">
+        </div>
+        <div class="form-group">
+          <label for="hero_title">Hero Title (HTML allowed)</label>
+          <input type="text" id="hero_title" class="form-control" placeholder='Your Home, <span class="accent">Elevated.</span>'>
+        </div>
+        <div class="form-group">
+          <label for="hero_subtitle">Hero Subtitle</label>
+          <textarea id="hero_subtitle" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+
+      <!-- Company Stats -->
+      <div class="card">
+        <div class="card__title">Company Stats</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+          <div class="form-group">
+            <label for="stat_projects">Projects Completed</label>
+            <input type="number" id="stat_projects" class="form-control" placeholder="500">
+          </div>
+          <div class="form-group">
+            <label for="stat_brands">Authorized Brands</label>
+            <input type="number" id="stat_brands" class="form-control" placeholder="24">
+          </div>
+          <div class="form-group">
+            <label for="stat_years">Years Experience</label>
+            <input type="number" id="stat_years" class="form-control" placeholder="10">
+          </div>
+          <div class="form-group">
+            <label for="stat_rating">Star Rating</label>
+            <input type="number" id="stat_rating" class="form-control" placeholder="5" min="1" max="5" step="0.1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Company Info -->
+      <div class="card">
+        <div class="card__title">Company Info</div>
+        <div class="form-group">
+          <label for="company_name">Company Name</label>
+          <input type="text" id="company_name" class="form-control" placeholder="American Home Cinemas">
+        </div>
+        <div class="form-group">
+          <label for="footer_description">Footer Description</label>
+          <textarea id="footer_description" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+
+      <!-- Social Media -->
+      <div class="card">
+        <div class="card__title">Social Media Links</div>
+        <div class="form-group">
+          <label for="facebook_url">Facebook URL</label>
+          <input type="text" id="facebook_url" class="form-control" placeholder="https://facebook.com/...">
+        </div>
+        <div class="form-group">
+          <label for="instagram_url">Instagram URL</label>
+          <input type="text" id="instagram_url" class="form-control" placeholder="https://instagram.com/...">
+        </div>
+        <div class="form-group">
+          <label for="youtube_url">YouTube URL</label>
+          <input type="text" id="youtube_url" class="form-control" placeholder="https://youtube.com/...">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="margin-bottom: 40px;">Save All Settings</button>
+    </form>
+  </main>
+
+  <script src="/admin/components.js"></script>
+  <script>
+    document.getElementById('sidebar-container').innerHTML = getSidebarHTML('settings');
+
+    const fields = [
+      'hero_badge', 'hero_title', 'hero_subtitle',
+      'stat_projects', 'stat_brands', 'stat_years', 'stat_rating',
+      'company_name', 'footer_description',
+      'facebook_url', 'instagram_url', 'youtube_url'
+    ];
+
+    async function loadSettings() {
+      const res = await fetch('/api/settings');
+      const settings = await res.json();
+      fields.forEach(key => {
+        const el = document.getElementById(key);
+        if (el && settings[key] !== undefined) {
+          el.value = settings[key];
+        }
+      });
+    }
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {};
+      fields.forEach(key => {
+        const el = document.getElementById(key);
+        if (el) payload[key] = el.value;
+      });
+
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        showToast('Settings saved successfully', 'success');
+      } else {
+        showToast('Failed to save settings', 'error');
+      }
+    });
+
+    loadSettings();
+  </script>
+</body>
+</html>
