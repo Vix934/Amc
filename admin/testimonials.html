@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Testimonials | AHC Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <main class="main">
+    <div class="main__header">
+      <h1>Testimonials</h1>
+      <button class="btn btn--primary" onclick="openAddModal()">+ Add Testimonial</button>
+    </div>
+
+    <div class="card">
+      <div class="card__title">Reviews (<span id="count">0</span>)</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Author</th>
+              <th>Rating</th>
+              <th>Review</th>
+              <th>Source</th>
+              <th>Visible</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyMsg" style="color: var(--text-muted); text-align: center; padding: 40px 0; display: none;">No testimonials yet.</p>
+    </div>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal" id="formModal">
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2 id="modalTitle">Add Testimonial</h2>
+        <button class="modal__close" onclick="closeModal('formModal')">&times;</button>
+      </div>
+      <form id="testimonialForm">
+        <input type="hidden" id="formId">
+        <div class="form-group">
+          <label for="formName">Author Name</label>
+          <input type="text" id="formName" class="form-control" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="formRating">Rating</label>
+          <select id="formRating" class="form-control">
+            <option value="5">5 Stars</option>
+            <option value="4">4 Stars</option>
+            <option value="3">3 Stars</option>
+            <option value="2">2 Stars</option>
+            <option value="1">1 Star</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="formText">Review Text</label>
+          <textarea id="formText" class="form-control" placeholder="Customer review..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="formSource">Source</label>
+          <input type="text" id="formSource" class="form-control" placeholder="Google Review" value="Google Review">
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeModal('formModal')">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="formSubmitBtn">Add Testimonial</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/admin/components.js"></script>
+  <script>
+    document.getElementById('sidebar-container').innerHTML = getSidebarHTML('testimonials');
+
+    let items = [];
+    let editingId = null;
+
+    async function loadItems() {
+      const res = await fetch('/api/testimonials/all');
+      items = await res.json();
+      render();
+    }
+
+    function render() {
+      const tbody = document.getElementById('tableBody');
+      const empty = document.getElementById('emptyMsg');
+      document.getElementById('count').textContent = items.length;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      tbody.innerHTML = items.map(t => `
+        <tr>
+          <td><strong>${t.author_name}</strong></td>
+          <td style="color: #c8a45a;">${'&#9733;'.repeat(t.rating)}</td>
+          <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.text}</td>
+          <td>${t.source}</td>
+          <td>
+            <button class="btn btn--sm ${t.is_visible ? 'btn--outline' : 'btn--ghost'}" onclick="toggleVisibility(${t.id}, ${t.is_visible})">
+              ${t.is_visible ? 'Visible' : 'Hidden'}
+            </button>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn--sm btn--outline" onclick="editItem(${t.id})">Edit</button>
+              <button class="btn btn--sm btn--danger" onclick="deleteItem(${t.id})">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = 'Add Testimonial';
+      document.getElementById('formSubmitBtn').textContent = 'Add Testimonial';
+      document.getElementById('formId').value = '';
+      document.getElementById('formName').value = '';
+      document.getElementById('formRating').value = '5';
+      document.getElementById('formText').value = '';
+      document.getElementById('formSource').value = 'Google Review';
+      openModal('formModal');
+    }
+
+    function editItem(id) {
+      const item = items.find(t => t.id === id);
+      if (!item) return;
+      editingId = id;
+      document.getElementById('modalTitle').textContent = 'Edit Testimonial';
+      document.getElementById('formSubmitBtn').textContent = 'Save Changes';
+      document.getElementById('formId').value = id;
+      document.getElementById('formName').value = item.author_name;
+      document.getElementById('formRating').value = item.rating;
+      document.getElementById('formText').value = item.text;
+      document.getElementById('formSource').value = item.source;
+      openModal('formModal');
+    }
+
+    document.getElementById('testimonialForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        author_name: document.getElementById('formName').value,
+        rating: parseInt(document.getElementById('formRating').value),
+        text: document.getElementById('formText').value,
+        source: document.getElementById('formSource').value
+      };
+
+      let res;
+      if (editingId) {
+        res = await fetch(`/api/testimonials/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch('/api/testimonials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (res.ok) {
+        showToast(editingId ? 'Testimonial updated' : 'Testimonial added', 'success');
+        closeModal('formModal');
+        loadItems();
+      }
+    });
+
+    async function toggleVisibility(id, current) {
+      await fetch(`/api/testimonials/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_visible: current ? 0 : 1 })
+      });
+      loadItems();
+    }
+
+    async function deleteItem(id) {
+      if (!confirm('Delete this testimonial?')) return;
+      const res = await fetch(`/api/testimonials/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Testimonial deleted', 'success');
+        loadItems();
+      }
+    }
+
+    loadItems();
+  </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Info | AHC Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div id="sidebar-container"></div>
+
+  <main class="main">
+    <div class="main__header">
+      <h1>Contact Info</h1>
+      <button class="btn btn--primary" onclick="openAddModal()">+ Add Contact</button>
+    </div>
+
+    <div class="card">
+      <div class="card__title">Contact Entries (<span id="count">0</span>)</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Label</th>
+              <th>Value</th>
+              <th>Visible</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyMsg" style="color: var(--text-muted); text-align: center; padding: 40px 0; display: none;">No contact entries yet.</p>
+    </div>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal" id="formModal">
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2 id="modalTitle">Add Contact</h2>
+        <button class="modal__close" onclick="closeModal('formModal')">&times;</button>
+      </div>
+      <form id="contactForm">
+        <input type="hidden" id="formId">
+        <div class="form-group">
+          <label for="formType">Type</label>
+          <select id="formType" class="form-control">
+            <option value="phone">Phone</option>
+            <option value="email">Email</option>
+            <option value="address">Address</option>
+            <option value="hours">Business Hours</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="formLabel">Label</label>
+          <input type="text" id="formLabel" class="form-control" placeholder="e.g., Main Office, Sales, Support">
+        </div>
+        <div class="form-group">
+          <label for="formValue">Value</label>
+          <input type="text" id="formValue" class="form-control" placeholder="Phone number, email, or address" required>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" onclick="closeModal('formModal')">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="formSubmitBtn">Add Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/admin/components.js"></script>
+  <script>
+    document.getElementById('sidebar-container').innerHTML = getSidebarHTML('contact');
+
+    let items = [];
+    let editingId = null;
+
+    async function loadItems() {
+      const res = await fetch('/api/contact/all');
+      items = await res.json();
+      render();
+    }
+
+    function render() {
+      const tbody = document.getElementById('tableBody');
+      const empty = document.getElementById('emptyMsg');
+      document.getElementById('count').textContent = items.length;
+
+      if (items.length === 0) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      tbody.innerHTML = items.map(c => `
+        <tr>
+          <td><span style="text-transform: capitalize;">${c.type}</span></td>
+          <td>${c.label || '-'}</td>
+          <td><strong>${c.value}</strong></td>
+          <td>
+            <button class="btn btn--sm ${c.is_visible ? 'btn--outline' : 'btn--ghost'}" onclick="toggleVisibility(${c.id}, ${c.is_visible})">
+              ${c.is_visible ? 'Visible' : 'Hidden'}
+            </button>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn--sm btn--outline" onclick="editItem(${c.id})">Edit</button>
+              <button class="btn btn--sm btn--danger" onclick="deleteItem(${c.id})">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = 'Add Contact';
+      document.getElementById('formSubmitBtn').textContent = 'Add Contact';
+      document.getElementById('formId').value = '';
+      document.getElementById('formType').value = 'phone';
+      document.getElementById('formLabel').value = '';
+      document.getElementById('formValue').value = '';
+      openModal('formModal');
+    }
+
+    function editItem(id) {
+      const item = items.find(c => c.id === id);
+      if (!item) return;
+      editingId = id;
+      document.getElementById('modalTitle').textContent = 'Edit Contact';
+      document.getElementById('formSubmitBtn').textContent = 'Save Changes';
+      document.getElementById('formId').value = id;
+      document.getElementById('formType').value = item.type;
+      document.getElementById('formLabel').value = item.label;
+      document.getElementById('formValue').value = item.value;
+      openModal('formModal');
+    }
+
+    document.getElementById('contactForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        type: document.getElementById('formType').value,
+        label: document.getElementById('formLabel').value,
+        value: document.getElementById('formValue').value
+      };
+
+      let res;
+      if (editingId) {
+        res = await fetch(`/api/contact/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (res.ok) {
+        showToast(editingId ? 'Contact updated' : 'Contact added', 'success');
+        closeModal('formModal');
+        loadItems();
+      }
+    });
+
+    async function toggleVisibility(id, current) {
+      await fetch(`/api/contact/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_visible: current ? 0 : 1 })
+      });
+      loadItems();
+    }
+
+    async function deleteItem(id) {
+      if (!confirm('Delete this contact entry?')) return;
+      const res = await fetch(`/api/contact/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Contact deleted', 'success');
+        loadItems();
+      }
+    }
+
+    loadItems();
+  </script>
+</body>
+</html>
